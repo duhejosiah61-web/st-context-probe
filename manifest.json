@@ -1,8 +1,8 @@
 {
-  "display_name": "当前角色探针 (Probe)",
+  "display_name": "草稿笨笨联动中心 (Wonderdraft Link)",
   "loading_order": 100,
   "js": "index.js",
   "author": "wonderdraft",
-  "version": "1.0.0",
-  "description": "只读探针：打印当前 Character 的全部可获取字段。不写卡、不保存、不联网。"
+  "version": "1.1.0",
+  "description": "草稿笨笨 ↔ SillyTavern 官方联动扩展：角色UUID自动维护、双时间线切换、消息同步与记忆导出。"
 }
