@@ -1,79 +1,50 @@
-# st-context-probe · 当前角色探针
+# 草稿笨笨 ↔ SillyTavern 全功能联动扩展插件 (Wonderdraft Link)
 
-一个 **只读** 的 SillyTavern 扩展，用来回答一个问题：
-
-> 酒馆 Extension 到底能拿到「当前正在聊天的 Character」的哪些数据？
-
-不写角色卡、不保存任何东西、不联网。唯一副作用是往页面插一个临时浮层，关掉就没了。
+官方全功能酒馆联动扩展插件，为 **草稿笨笨** 与 **SillyTavern** 之间提供无缝、低延迟的角色上下文监听、实时推流以及记忆同步支持。
 
 ---
 
-## 安装
+## 🌟 核心功能
+
+1. **右下角悬浮联动球 & 控制中心大版面**
+   - 页面右下角常驻微动精致悬浮球（带实时连通指示绿点），点击即可唤出居中全屏毛玻璃控制中心。
+   - 魔法棒扩展菜单同步支持唤出控制中心。
+
+2. **角色卡智能监听与 UUID 自动维护**
+   - 实时检测当前聊天角色，并在角色卡扩展数据中维护永久稳定的角色标识 (`character.data.extensions.xiaoshouji.characterId`)。
+
+3. **双时间线模式管理**
+   - **主时间线模式**：双向实时合并并推进主线故事剧情。
+   - **平行时间线模式**：线下独立演进，记录支线与日常，不污染主剧本。
+
+4. **实时双向推流 & 手动即时同步**
+   - 支持 AI 对话流实时自动推送到草稿笨笨，或手动强制拉取增量对话。
+
+5. **背景记忆与人设上下文打包导出**
+   - 一键提取角色人设设定、世界观、个性与对话摘要，打包生成标准上下文记忆包。
+
+---
+
+## 📦 安装方法
 
 ### 方式一：URL 安装（推荐）
 
-1. 把这个仓库 push 到 GitHub / Gitee
-2. SillyTavern → 扩展面板（顶部拼图图标）→ **安装扩展**
-3. 填入仓库地址，例如 `https://github.com/你的用户名/st-context-probe`
-4. 点安装 → **重启 SillyTavern**
-
-> ⚠️ `manifest.json` 必须在**仓库根目录**。SillyTavern 是 `git clone` 整个仓库后直接在根目录找 `manifest.json`，**不支持子目录**。
-> ⚠️ URL 安装需要本机装有 **Git**（`git-scm.com`），否则会失败。
+1. 打开 SillyTavern → **扩展面板（顶部拼图图标 🧩）** → **安装扩展**
+2. 填入本仓库 Git 地址：`https://github.com/duhejosiah61-web/st-context-probe`
+3. 点击 **安装**，完成后按 **F5** 刷新酒馆页面即可。
 
 ### 方式二：手动安装
 
-把整个文件夹复制到下面任一位置，然后重启 SillyTavern：
+将本仓库文件夹复制到以下任意路径之一，然后刷新酒馆：
 
 - 全局（所有用户）：`SillyTavern/public/scripts/extensions/third-party/st-context-probe/`
 - 单用户：`SillyTavern/data/<用户名>/extensions/st-context-probe/`
 
-扩展会自动适配这三种安装位置，不需要改代码。
-
 ---
 
-## 使用
+## 🎮 使用说明
 
-- **扩展面板 → 「测试当前角色」**
-- 或在聊天框输入 **`/probe`**
+1. 刷新酒馆后，页面**右下角**会自动显示 **联动悬浮球**。
+2. 点击悬浮球（或通过输入框旁边的**魔法棒菜单**点击「草稿笨笨联动控制中心」），即可打开控制面板。
+3. 在面板中可自由切换时间线、启闭自动同步、手动拉取对话或导出背景记忆包。
 
-按 **F12** 打开 Console 可以看到完整对象，页面上也会弹出浮层（可一键复制 JSON）。
-
----
-
-## 重点看这 7 组字段
-
-| 字段 | 看什么 | 为什么重要 |
-|---|---|---|
-| `context.characterId` | 是不是**数字** | 数字 = 数组下标，不是稳定 ID，不能用作身份标识 |
-| `character_topLevel.avatar` | 是不是 `"XXX.png"` | 这是 SillyTavern 事实上的主键 |
-| `character_topLevel.shallow` | 是否 `true` | true = 开了惰性加载，`data` 是**残缺子集** |
-| `character_topLevel.spec` | `chara_card_v2` / `chara_card_v3` | 决定能拿到哪些字段 |
-| `character_data.extensions_KEYS` | 有哪些 key | 看酒馆往 extensions 里塞了什么 |
-| `ALL_TOP_LEVEL_KEYS` / `ALL_DATA_KEYS` | 完整 key 列表 | 文档没写的隐藏字段都在这 |
-| `identity.content_fingerprint_sha256` | 指纹值 | 跨重导入仍稳定的身份依据 |
-
----
-
-## 建议做的两个验证
-
-**① 下标漂移验证**
-
-1. 点探针，记下 `characterId`
-2. 导入一张**新的角色卡**
-3. 回到原角色，再点探针
-4. `characterId` 变了 → 证实它是数组下标，不可用
-
-**② 会话字段验证**
-
-同一个角色切换聊天记录，`chatId` / `chat` 会跟着变 —— 说明它标识的是**对话**，不是角色。
-
----
-
-## 安全声明
-
-- ❌ 不调用 `writeExtensionField`，角色卡一个字节都不会改
-- ❌ 不写 localStorage / IndexedDB / 服务端
-- ❌ 不联网、不连接任何外部程序
-- ✅ 只在页面插临时浮层，关闭或按 ESC 即完全移除
-
-`probe_capability` 那一段只是**检测** API 在不在，不会执行写入。
