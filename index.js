@@ -294,10 +294,18 @@ async function run() {
 }
 
 // ---------- 挂载 ----------
+// 不同版本的 SillyTavern 容器 id 不一样，依次尝试
+const HOST_SELECTORS = ['#extensions_settings', '#extensionsMenu'];
+
 function mountButton() {
-    const host = document.getElementById('extensionsMenu');
-    if (!host) return false;
     if (document.getElementById('st-probe-btn')) return true;
+
+    let host = null;
+    for (const sel of HOST_SELECTORS) {
+        host = document.querySelector(sel);
+        if (host) break;
+    }
+    if (!host) return false;
 
     const item = document.createElement('div');
     item.id = 'st-probe-btn';
@@ -317,10 +325,14 @@ async function boot() {
         return;
     }
 
-    let tries = 0;
-    const timer = setInterval(() => {
-        if (mountButton() || ++tries > 20) clearInterval(timer);
-    }, 500);
+    // 扩展面板是懒渲染的（点开才生成 DOM），用 MutationObserver 等它出现
+    if (!mountButton()) {
+        const observer = new MutationObserver(() => {
+            if (mountButton()) observer.disconnect();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => observer.disconnect(), 60000);
+    }
 
     // 备用入口：聊天框输入 /probe
     try {
@@ -336,7 +348,10 @@ async function boot() {
         console.warn(LOG, 'slash 命令注册失败，可只用按钮：', e?.message || e);
     }
 
-    console.log(LOG, '探针已加载。设置 → 扩展 → 测试当前角色，或输入 /probe');
+    console.log(LOG, '探针已加载。扩展面板 → 测试当前角色，或输入 /probe');
+    try {
+        toastr?.info?.('探针已就绪：扩展面板里点「测试当前角色」，或在聊天框输入 /probe', '', { timeOut: 8000 });
+    } catch { /* toastr 不可用时静默 */ }
 }
 
 boot();
