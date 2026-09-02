@@ -172,26 +172,23 @@ async function collect() {
     };
 }
 
-// ---------- 输出：手机友好轻量浮层 ----------
-async function copyText(text, targetTextarea) {
-    if (targetTextarea) {
-        try {
-            targetTextarea.focus();
-            targetTextarea.select();
-            targetTextarea.setSelectionRange(0, 999999);
-            const ok = document.execCommand('copy');
-            if (ok) return true;
-        } catch { /* fallback */ }
-    }
-
+// ---------- 输出：直接触发文件下载 (手机端 100% 成功，无需剪贴板权限) ----------
+function downloadJsonFile(filename, text) {
     try {
-        if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(text);
-            return true;
-        }
-    } catch { /* fallback */ }
-
-    return false;
+        const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        return true;
+    } catch (e) {
+        console.error(LOG, '下载失败:', e);
+        return false;
+    }
 }
 
 function showOverlay(json, data) {
@@ -199,7 +196,6 @@ function showOverlay(json, data) {
 
     const wrap = document.createElement('div');
     wrap.id = 'st-probe-overlay';
-    // 移除 backdrop-filter 滤镜，手机端非常吃 GPU
     wrap.style.cssText =
         'position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:2147483647;' +
         'background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;' +
@@ -208,7 +204,7 @@ function showOverlay(json, data) {
     const box = document.createElement('div');
     box.style.cssText =
         'background:#ffffff;color:#111827;border-radius:14px;width:100%;max-width:440px;' +
-        'height:80vh;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;' +
+        'height:76vh;max-height:76vh;display:flex;flex-direction:column;overflow:hidden;' +
         'box-shadow:0 12px 36px rgba(0,0,0,0.4);box-sizing:border-box;border:1px solid rgba(0,0,0,0.1);';
 
     const ds = data.dataSource ?? {};
@@ -249,21 +245,19 @@ function showOverlay(json, data) {
             ${row('data 顶层 Keys', (cdf.ALL_DATA_KEYS ?? []).join(', '))}
             
             <div style="margin-top:10px;">
-                <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">JSON 原始文本 (长按可直接全选复制)：</div>
+                <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">JSON 原始文本：</div>
                 <textarea id="st-probe-raw-json" readonly style="width:100%;height:90px;font-size:10px;font-family:ui-monospace,monospace;border:1px solid #e5e7eb;border-radius:8px;padding:6px;box-sizing:border-box;background:#f9fafb;color:#111827;resize:none;">${json}</textarea>
             </div>
         </div>
 
         <div style="padding:10px 12px;display:flex;gap:8px;border-top:1px solid #f3f4f6;background:#fafafa;flex-shrink:0;">
-            <button id="st-probe-copy" style="flex:1;padding:10px 0;border:none;border-radius:8px;background:#111827;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">一键复制全部 JSON</button>
+            <button id="st-probe-download" style="flex:1;padding:10px 0;border:none;border-radius:8px;background:#111827;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">下载 JSON 文件</button>
             <button id="st-probe-close" style="flex:1;padding:10px 0;border:1px solid #e5e7eb;background:#ffffff;color:#374151;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;">关闭</button>
         </div>
     `;
 
     wrap.appendChild(box);
     document.body.appendChild(wrap);
-
-    const rawTextarea = box.querySelector('#st-probe-raw-json');
 
     const close = (e) => {
         if (e) {
@@ -285,33 +279,28 @@ function showOverlay(json, data) {
     bindCloseBtn(box.querySelector('#st-probe-top-close'));
     bindCloseBtn(box.querySelector('#st-probe-close'));
 
-    // 点击黑色遮罩背景直接关闭
     wrap.addEventListener('click', (e) => {
         if (e.target === wrap) close(e);
     });
 
-    const copyBtn = box.querySelector('#st-probe-copy');
-    const handleCopy = async (e) => {
+    const downloadBtn = box.querySelector('#st-probe-download');
+    const handleDownload = (e) => {
         if (e) {
             e.preventDefault();
             e.stopPropagation();
         }
-        const ok = await copyText(json, rawTextarea);
+        const charName = cdf.name || 'character';
+        const ok = downloadJsonFile(`probe_${charName}_${Date.now()}.json`, json);
         if (ok) {
-            copyBtn.textContent = '已复制到剪切板 ✓';
-            setTimeout(close, 800);
+            downloadBtn.textContent = '下载已触发 ✓';
+            setTimeout(close, 1000);
         } else {
-            copyBtn.textContent = '已全选，请长按文本框复制';
-            if (rawTextarea) {
-                rawTextarea.focus();
-                rawTextarea.select();
-                rawTextarea.setSelectionRange(0, 999999);
-            }
+            downloadBtn.textContent = '下载失败';
         }
     };
 
-    copyBtn.addEventListener('click', handleCopy);
-    copyBtn.addEventListener('touchend', handleCopy);
+    downloadBtn.addEventListener('click', handleDownload);
+    downloadBtn.addEventListener('touchend', handleDownload);
 }
 
 // ---------- 主流程 ----------
@@ -331,11 +320,10 @@ async function run() {
     }
 }
 
-// ---------- 魔法棒 (Extensions Menu / Quick Menu) 挂载 ----------
+// ---------- 魔法棒 (Extensions Menu / Quick Menu) 极简挂载 ----------
 function tryMountMenuButton() {
     if (document.getElementById('st-probe-menu-item')) return true;
 
-    // 魔法棒弹出的扩展列表容器
     const menuContainer = document.querySelector('#extensionsMenu') || 
                           document.querySelector('#extensions_menu') ||
                           document.querySelector('#extensions_settings');
@@ -345,23 +333,20 @@ function tryMountMenuButton() {
     const item = document.createElement('div');
     item.id = 'st-probe-menu-item';
     item.className = 'list-group-item flex-container flexGap5 interactable';
-    item.style.cursor = 'pointer';
+    item.style.cssText = 'cursor: pointer; padding: 8px 12px; display: flex; align-items: center;';
     item.innerHTML = `
-        <div class="fa-solid fa-magnifying-glass extensionsMenuExtensionButton" style="margin-right: 6px;"></div>
+        <div class="fa-solid fa-magnifying-glass extensionsMenuExtensionButton" style="margin-right: 8px;"></div>
         <span style="font-weight: 600;">测试当前角色 (Probe)</span>
     `;
 
-    item.addEventListener('click', (e) => {
+    const handleClick = (e) => {
         e.preventDefault();
         e.stopPropagation();
         run();
-    });
+    };
 
-    item.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        run();
-    });
+    item.addEventListener('click', handleClick);
+    item.addEventListener('touchend', handleClick);
 
     menuContainer.appendChild(item);
     return true;
@@ -370,26 +355,14 @@ function tryMountMenuButton() {
 async function boot() {
     _getContext = await resolveGetContext();
     
-    // 1. 尝试直接挂载
-    tryMountMenuButton();
+    // 监听魔法棒点击，点击瞬间执行挂载（零背景轮询，零性能消耗）
+    document.addEventListener('click', (e) => {
+        if (e.target && (e.target.closest('#extensions_button') || e.target.closest('#extensionsMenuButton') || e.target.closest('.fa-wand-magic-sparkles'))) {
+            setTimeout(tryMountMenuButton, 60);
+        }
+    }, true);
 
-    // 2. 监听魔法棒图标点击事件（当用户点击魔法棒打开菜单时，动态注入进去）
-    const wandSelectors = ['#extensions_button', '#extensionsMenuButton', '.fa-wand-magic-sparkles', '.fa-wand-magic'];
-    const bindWandClick = () => {
-        wandSelectors.forEach(sel => {
-            const btn = document.querySelector(sel);
-            if (btn && !btn._hasProbeBound) {
-                btn._hasProbeBound = true;
-                btn.addEventListener('click', () => setTimeout(tryMountMenuButton, 100));
-                btn.addEventListener('touchend', () => setTimeout(tryMountMenuButton, 100));
-            }
-        });
-    };
-
-    bindWandClick();
-    setInterval(bindWandClick, 2000);
-
-    // 3. 注册 /probe 斜杠命令
+    // 备用斜杠命令
     try {
         if (_getContext?.SlashCommandParser && _getContext?.SlashCommand) {
             _getContext.SlashCommandParser.addCommandObject(
@@ -401,8 +374,6 @@ async function boot() {
             );
         }
     } catch { /* 忽略 */ }
-
-    console.log(LOG, '探针已就绪：点击魔法棒 →「测试当前角色 (Probe)」，或在输入框发送 /probe');
 }
 
 boot();
