@@ -377,21 +377,28 @@ function doExportMemory() {
 
 // ---------- 4. 魔法棒菜单集成与启动挂载 ----------
 function tryMountMenuButton() {
-    if (document.getElementById('st-probe-menu-item')) return true;
+    // 移除可能存在的旧版测试按钮
+    const oldProbeBtn = document.getElementById('st-probe-menu-item');
+    if (oldProbeBtn && oldProbeBtn.textContent.includes('测试当前角色')) {
+        oldProbeBtn.remove();
+    }
+
+    if (document.getElementById('wd-link-menu-item')) return true;
 
     const menuContainer = document.querySelector('#extensionsMenu') || 
                           document.querySelector('#extensions_menu') ||
+                          document.querySelector('.extensionsMenu') ||
                           document.querySelector('#extensions_settings');
 
     if (!menuContainer) return false;
 
     const item = document.createElement('div');
-    item.id = 'st-probe-menu-item';
+    item.id = 'wd-link-menu-item';
     item.className = 'list-group-item flex-container flexGap5 interactable';
-    item.style.cssText = 'cursor: pointer; padding: 8px 12px; display: flex; align-items: center;';
+    item.style.cssText = 'cursor: pointer; padding: 10px 14px; display: flex; align-items: center; border-radius: 8px; margin: 2px 0; transition: background 0.2s;';
     item.innerHTML = `
-        <div class="fa-solid fa-wand-magic-sparkles extensionsMenuExtensionButton" style="margin-right: 8px;"></div>
-        <span style="font-weight: 600;">草稿笨笨联动面板</span>
+        <div class="fa-solid fa-wand-magic-sparkles extensionsMenuExtensionButton" style="margin-right: 10px; color: #6366f1; font-size: 16px;"></div>
+        <span style="font-weight: 600; font-size: 13px;">草稿笨笨联动面板</span>
     `;
 
     const handleClick = (e) => {
@@ -414,12 +421,14 @@ async function boot() {
     _getContext = await resolveGetContext();
     injectFloatingWidget();
 
-    // 监听魔法棒菜单展开
-    document.addEventListener('click', (e) => {
-        if (e.target && (e.target.closest('#extensions_button') || e.target.closest('#extensionsMenuButton') || e.target.closest('.fa-wand-magic-sparkles'))) {
-            setTimeout(tryMountMenuButton, 60);
-        }
+    // 监听魔法棒/扩展菜单点击展开
+    document.addEventListener('click', () => {
+        setTimeout(tryMountMenuButton, 50);
+        setTimeout(tryMountMenuButton, 200);
     }, true);
+
+    // 定时检查确保菜单存在
+    setInterval(tryMountMenuButton, 1000);
 
     // 备用斜杠命令
     try {
