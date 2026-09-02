@@ -169,7 +169,7 @@ async function collect() {
     };
 }
 
-// ---------- 输出：浮层 ----------
+// ---------- 输出：手机友好浮层 ----------
 async function copyText(text) {
     try {
         if (navigator.clipboard?.writeText) {
@@ -180,8 +180,9 @@ async function copyText(text) {
     try {
         const ta = document.createElement('textarea');
         ta.value = text;
-        ta.style.cssText = 'position:fixed;top:-9999px;';
+        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
         document.body.appendChild(ta);
+        ta.focus();
         ta.select();
         const ok = document.execCommand('copy');
         ta.remove();
@@ -197,54 +198,59 @@ function showOverlay(json, data) {
     const wrap = document.createElement('div');
     wrap.id = 'st-probe-overlay';
     wrap.style.cssText =
-        'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;' +
-        'align-items:center;justify-content:center;padding:14px;box-sizing:border-box;' +
-        'font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
+        'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,0.65);display:flex;' +
+        'align-items:center;justify-content:center;padding:12px;box-sizing:border-box;' +
+        'backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);' +
+        'font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",Roboto,sans-serif;';
 
     const box = document.createElement('div');
     box.style.cssText =
-        'background:#fff;color:#1c1c1c;border-radius:14px;width:100%;max-width:560px;' +
-        'max-height:92vh;display:flex;flex-direction:column;overflow:hidden;' +
-        'box-shadow:0 14px 44px rgba(0,0,0,.4);box-sizing:border-box;';
+        'background:#ffffff;color:#111827;border-radius:16px;width:100%;max-width:480px;' +
+        'max-height:86vh;display:flex;flex-direction:column;overflow:hidden;' +
+        'box-shadow:0 20px 48px rgba(0,0,0,0.3);box-sizing:border-box;border:1px solid rgba(0,0,0,0.08);';
 
     const ds = data.dataSource ?? {};
     const cdf = data.character_data_fields ?? {};
+    const idn = data.identity ?? {};
 
     const row = (k, v, warn) =>
-        `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f1f1f1;">
-           <span style="flex:0 0 130px;color:#888;font-size:12px;line-height:1.4;">${k}</span>
-           <span style="flex:1;word-break:break-all;font-size:13px;line-height:1.45;${warn ? 'color:#c5221f;font-weight:700;' : 'color:#222;'}">${v}</span>
+        `<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
+           <span style="flex:0 0 110px;color:#6b7280;font-size:12px;line-height:1.4;">${k}</span>
+           <span style="flex:1;word-break:break-all;font-size:12px;line-height:1.45;${warn ? 'color:#dc2626;font-weight:600;' : 'color:#1f2937;'}">${v}</span>
          </div>`;
 
     box.innerHTML = `
-        <div style="padding:16px 18px;border-bottom:1px solid #ececec;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
-                <span style="font-size:17px;font-weight:700;">${cdf.name ?? '(无角色)'}</span>
-                <span style="font-size:11px;color:#fff;background:#7c5cff;padding:2px 9px;border-radius:11px;">${data.meta.mode}</span>
+        <div style="padding:14px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;background:#fafafa;">
+            <div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:16px;font-weight:700;color:#111827;">${cdf.name ?? '(未检测到角色)'}</span>
+                    <span style="font-size:10px;color:#2563eb;background:#eff6ff;padding:2px 6px;border-radius:4px;font-weight:500;">${data.meta.mode}</span>
+                </div>
+                <div style="font-size:11px;color:#9ca3af;margin-top:2px;">SillyTavern 角色数据探针 · 只读</div>
             </div>
-            <div style="font-size:11px;color:#999;">SillyTavern 当前角色探针 · 只读</div>
+            <button id="st-probe-top-close" style="background:none;border:none;font-size:20px;color:#9ca3af;cursor:pointer;padding:4px;line-height:1;">✕</button>
         </div>
 
-        <div style="padding:10px 18px;background:#fafafa;overflow:auto;flex:1;">
-            ${row('数据来源表达式', ds.sourceExpression ?? 'ctx.characters[ctx.characterId]', true)}
-            ${row('characterId 实测值', `${ds.characterId_rawValue} <span style="color:#999">(类型: ${ds.characterId_type})</span>`, true)}
-            ${row('是否为数组索引', ds.isIndexConfirmed ? '是（数字索引）' : '否', true)}
-            ${row('name', cdf.name ?? '-')}
-            ${row('avatar 文件名', idn.avatar_file ?? '-')}
-            ${row('description 长度', cdf.description ? `${cdf.description.length} 字` : 'null')}
-            ${row('personality 长度', cdf.personality ? `${cdf.personality.length} 字` : 'null')}
-            ${row('scenario 长度', cdf.scenario ? `${cdf.scenario.length} 字` : 'null')}
-            ${row('first_mes 长度', cdf.first_mes ? `${cdf.first_mes.length} 字` : 'null')}
-            ${row('mes_example 长度', cdf.mes_example ? `${cdf.mes_example.length} 字` : 'null')}
-            ${row('chat 会话名', ds.chatId ?? '-')}
-            ${row('extensions 键列表', (Object.keys(cdf.extensions ?? {})).join(', ') || 'null / 空')}
+        <div style="padding:12px 16px;background:#ffffff;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;">
+            ${row('数据来源', ds.sourceExpression ?? 'ctx.characters[ctx.characterId]', true)}
+            ${row('characterId', `${ds.characterId_rawValue} <span style="color:#9ca3af">(${ds.characterId_type})</span>`, true)}
+            ${row('类型判断', ds.isIndexConfirmed ? '数组索引 (数字)' : '非纯数字', true)}
+            ${row('角色姓名', cdf.name ?? 'null')}
+            ${row('头像文件名', idn.avatar_file ?? 'null')}
+            ${row('设定 description', cdf.description ? `${cdf.description.length} 字` : 'null')}
+            ${row('性格 personality', cdf.personality ? `${cdf.personality.length} 字` : 'null')}
+            ${row('情景 scenario', cdf.scenario ? `${cdf.scenario.length} 字` : 'null')}
+            ${row('开场 first_mes', cdf.first_mes ? `${cdf.first_mes.length} 字` : 'null')}
+            ${row('对话示例 mes_example', cdf.mes_example ? `${cdf.mes_example.length} 字` : 'null')}
+            ${row('当前会话 chatId', ds.chatId ?? 'null')}
+            ${row('扩展键 extensions', Object.keys(cdf.extensions ?? {}).join(', ') || 'null / 空')}
             ${row('data 顶层 Keys', (cdf.ALL_DATA_KEYS ?? []).join(', '))}
-            ${row('内容指纹 (SHA256)', String(idn.content_fingerprint_sha256 ?? '').slice(0, 32) + '…')}
+            ${row('指纹 (SHA256)', String(idn.content_fingerprint_sha256 ?? '').slice(0, 24) + '…')}
         </div>
 
-        <div style="padding:10px 14px;display:flex;gap:10px;border-top:1px solid #ececec;">
-            <button id="st-probe-copy" style="flex:1;padding:12px 0;border:none;border-radius:10px;background:#7c5cff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">复制完整 JSON</button>
-            <button id="st-probe-close" style="flex:1;padding:12px 0;border:1px solid #ddd;background:#fff;color:#444;border-radius:10px;font-size:14px;cursor:pointer;">关闭</button>
+        <div style="padding:12px 14px;display:flex;gap:10px;border-top:1px solid #f3f4f6;background:#fafafa;">
+            <button id="st-probe-copy" style="flex:1;padding:12px 0;border:none;border-radius:10px;background:#111827;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">复制完整 JSON</button>
+            <button id="st-probe-close" style="flex:1;padding:12px 0;border:1px solid #e5e7eb;background:#ffffff;color:#374151;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;">关闭</button>
         </div>
     `;
 
@@ -258,34 +264,102 @@ function showOverlay(json, data) {
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', onKey);
 
+    box.querySelector('#st-probe-top-close').addEventListener('click', close);
     box.querySelector('#st-probe-close').addEventListener('click', close);
     box.querySelector('#st-probe-copy').addEventListener('click', async (e) => {
         const ok = await copyText(json);
-        e.target.textContent = ok ? '已复制 ✓' : '复制失败，看 Console';
-        if (ok) setTimeout(close, 700);
-        else setTimeout(() => (e.target.textContent = '复制完整 JSON'), 1800);
+        e.target.textContent = ok ? '已复制 ✓' : '复制失败 (看 Console)';
+        if (ok) {
+            setTimeout(close, 800);
+        } else {
+            setTimeout(() => (e.target.textContent = '复制完整 JSON'), 1800);
+        }
     });
     wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
 }
 
 // ---------- 主流程 ----------
 async function run() {
-    const data = await collect();
-    const json = JSON.stringify(data, null, 2);
+    try {
+        if (!_getContext) _getContext = await resolveGetContext();
+        if (!_getContext) {
+            alert('探针未能获取 SillyTavern 上下文，请确认扩展在启用状态');
+            return;
+        }
+        const data = await collect();
+        const json = JSON.stringify(data, null, 2);
 
-    console.log(LOG, '=== 当前 Character 完整快照 ===');
-    console.log(LOG, data);
-    console.log(LOG, '=== 完整 JSON ===');
-    console.log(json);
+        console.log(LOG, '=== 当前 Character 完整快照 ===', data);
+        console.log(LOG, '=== 完整 JSON ===\n' + json);
 
-    // 弹浮窗展示（手机友好），浮窗内提供「复制完整 JSON」按钮
-    showOverlay(json, data);
-    try { toastr?.info?.('当前角色探针已显示，点「复制完整 JSON」后粘贴发我', '', { timeOut: 6000 }); } catch { /* 静默 */ }
+        showOverlay(json, data);
+    } catch (err) {
+        console.error(LOG, '探针执行报错:', err);
+        alert('探针执行出错: ' + (err.message || err));
+    }
 }
 
-// ---------- 挂载 ----------
-// 不同版本的 SillyTavern 容器 id 不一样，依次尝试
-const HOST_SELECTORS = ['#extensions_settings', '#extensionsMenu'];
+// ---------- 手机友好悬浮球 (可拖拽，绝对不会被遮挡) ----------
+function mountFloatingButton() {
+    if (document.getElementById('st-probe-fab')) return;
+    const fab = document.createElement('div');
+    fab.id = 'st-probe-fab';
+    fab.innerHTML = '<span style="font-size:11px;font-weight:bold;letter-spacing:0.5px;">PROBE</span>';
+    fab.style.cssText =
+        'position:fixed;right:16px;bottom:100px;z-index:2147483640;width:52px;height:52px;' +
+        'border-radius:50%;background:#111827;color:#ffffff;display:flex;align-items:center;justify-content:center;' +
+        'cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,0.3);border:2px solid #ffffff;' +
+        'touch-action:none;user-select:none;font-family:ui-monospace,monospace;';
+
+    // 支持移动端拖拽
+    let isDragging = false;
+    let startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
+    let hasMoved = false;
+
+    const onTouchStart = (e) => {
+        isDragging = true;
+        hasMoved = false;
+        const touch = e.touches ? e.touches[0] : e;
+        startX = touch.clientX;
+        startY = touch.clientY;
+        const rect = fab.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+    };
+
+    const onTouchMove = (e) => {
+        if (!isDragging) return;
+        const touch = e.touches ? e.touches[0] : e;
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+            hasMoved = true;
+            fab.style.left = `${Math.max(10, Math.min(window.innerWidth - 60, initialLeft + dx))}px`;
+            fab.style.top = `${Math.max(10, Math.min(window.innerHeight - 60, initialTop + dy))}px`;
+            fab.style.right = 'auto';
+            fab.style.bottom = 'auto';
+        }
+    };
+
+    const onTouchEnd = () => {
+        isDragging = false;
+        if (!hasMoved) {
+            run();
+        }
+    };
+
+    fab.addEventListener('touchstart', onTouchStart, { passive: false });
+    fab.addEventListener('touchmove', onTouchMove, { passive: false });
+    fab.addEventListener('touchend', onTouchEnd);
+    fab.addEventListener('mousedown', onTouchStart);
+    window.addEventListener('mousemove', onTouchMove);
+    window.addEventListener('mouseup', onTouchEnd);
+
+    document.body.appendChild(fab);
+}
+
+// 扩展菜单列表项挂载
+const HOST_SELECTORS = ['#extensions_settings', '#extensionsMenu', '#extensions_menu'];
 
 function mountButton() {
     if (document.getElementById('st-probe-btn')) return true;
@@ -302,36 +376,30 @@ function mountButton() {
     item.className = 'list-group-item flex-container flexGap5 interactable';
     item.innerHTML = `
         <div class="fa-solid fa-magnifying-glass extensionsMenuExtensionButton"></div>
-        <span>测试当前角色</span>`;
+        <span>测试当前角色 (Probe)</span>`;
     item.addEventListener('click', run);
     host.appendChild(item);
     return true;
 }
 
-// 浮动按钮：确保任何页面都可见可点（玩家一般不用斜杠命令，也不一定会去扩展面板找）
-function mountFloatingButton() {
-    if (document.getElementById('st-probe-fab')) return;
-    const fab = document.createElement('button');
-    fab.id = 'st-probe-fab';
-    fab.textContent = '🔍 测试当前角色';
-    fab.style.cssText =
-        'position:fixed;left:14px;bottom:64px;z-index:99998;border:none;' +
-        'background:#7c5cff;color:#fff;padding:12px 16px;border-radius:24px;' +
-        'font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.32);' +
-        'font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
-    fab.addEventListener('click', run);
-    document.body.appendChild(fab);
-}
-
 async function boot() {
-    _getContext = await resolveGetContext();
-    mountFloatingButton();
-    if (!_getContext) {
-        console.error(LOG, '无法解析 getContext()，探针未启动。请确认本扩展安装在 SillyTavern 的 extensions 目录下。');
-        return;
+    // 立即挂载悬浮球，确保在任何页面都能看到
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mountFloatingButton);
+    } else {
+        mountFloatingButton();
     }
 
-    // 扩展面板是懒渲染的（点开才生成 DOM），用 MutationObserver 等它出现
+    _getContext = await resolveGetContext();
+    
+    // 如果还没加载完毕，延迟 1 秒再尝试探测一次 getContext
+    if (!_getContext) {
+        setTimeout(async () => {
+            _getContext = await resolveGetContext();
+        }, 1200);
+    }
+
+    // 监听扩展菜单出现
     if (!mountButton()) {
         const observer = new MutationObserver(() => {
             if (mountButton()) observer.disconnect();
@@ -340,24 +408,18 @@ async function boot() {
         setTimeout(() => observer.disconnect(), 60000);
     }
 
-    // 备用入口：聊天框输入 /probe
+    // 注册斜杠命令 /probe
     try {
-        const ctx = _getContext();
-        ctx.SlashCommandParser.addCommandObject(
-            ctx.SlashCommand.fromProps({
-                name: 'probe',
-                helpString: '打印当前 Character 的全部字段到 console（只读，不写卡）',
-                callback: () => { run(); return ''; },
-            }),
-        );
-    } catch (e) {
-        console.warn(LOG, 'slash 命令注册失败，可只用按钮：', e?.message || e);
-    }
-
-    console.log(LOG, '探针已加载。扩展面板 → 测试当前角色，或输入 /probe');
-    try {
-        toastr?.info?.('探针已就绪：扩展面板里点「测试当前角色」，或在聊天框输入 /probe', '', { timeOut: 8000 });
-    } catch { /* toastr 不可用时静默 */ }
+        if (_getContext?.SlashCommandParser && _getContext?.SlashCommand) {
+            _getContext.SlashCommandParser.addCommandObject(
+                _getContext.SlashCommand.fromProps({
+                    name: 'probe',
+                    helpString: '打印当前 Character 的全部字段（只读）',
+                    callback: () => { run(); return ''; },
+                }),
+            );
+        }
+    } catch { /* 忽略 */ }
 }
 
 boot();
