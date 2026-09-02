@@ -418,8 +418,24 @@ function tryMountMenuButton() {
 }
 
 async function boot() {
-    _getContext = await resolveGetContext();
+    console.log(`${LOG} 探针扩展正在启动...`);
+    
+    // 优先立即挂载悬浮球与 UI，不等待任何异步 context
     injectFloatingWidget();
+    if (document.readyState !== 'loading') {
+        injectFloatingWidget();
+    } else {
+        document.addEventListener('DOMContentLoaded', injectFloatingWidget);
+    }
+
+    try {
+        _getContext = await resolveGetContext();
+        if (_getContext) {
+            console.log(`${LOG} 成功连通 SillyTavern 核心上下文！`);
+        }
+    } catch (e) {
+        console.warn(`${LOG} 获取 context 提示:`, e);
+    }
 
     // 监听魔法棒/扩展菜单点击展开
     document.addEventListener('click', () => {
