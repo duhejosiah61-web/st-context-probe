@@ -1,11 +1,12 @@
 {
-  "display_name": "草稿笨笨联动中心",
+  "display_name": "Wonderdraft Link",
   "loading_order": 100,
   "requires": [],
   "optional": [],
   "js": "index.js",
+  "css": "style.css",
   "author": "wonderdraft",
   "version": "1.1.0",
   "homePage": "https://github.com/duhejosiah61-web/st-context-probe",
-  "description": "草稿笨笨 ↔ SillyTavern 官方联动扩展：角色UUID自动维护、双时间线切换、消息同步与记忆导出。"
+  "description": "Wonderdraft OS Link Extension for SillyTavern"
 }
