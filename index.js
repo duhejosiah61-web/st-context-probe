@@ -140,10 +140,11 @@ async function collect() {
             fingerprint_source: 'norm(name) + norm(description) + norm(personality)',
         },
 
-        // 重点 6：全部角色列表（用于验证下标漂移）
+        // 重点 6：全部角色列表（仅取数量与前5个角色简要，避免全量遍历上百张卡导致手机卡顿）
         characters_overview: {
             total: ctx.characters?.length ?? 0,
-            list: (ctx.characters ?? []).map((c, i) => ({
+            sample_count: Math.min(ctx.characters?.length ?? 0, 5),
+            sample_list: (ctx.characters ?? []).slice(0, 5).map((c, i) => ({
                 i,
                 name: c?.name,
                 avatar: c?.avatar,
@@ -156,22 +157,23 @@ async function collect() {
             messageCount: ctx.chat?.length ?? 0,
             current_chatId: ctx.chatId ?? null,
             firstMessage: safe(() => ({
-                name: ctx.chat[0].name,
-                is_user: !!ctx.chat[0].is_user,
-                text: cut(ctx.chat[0].mes, 60),
+                name: ctx.chat[0]?.name,
+                is_user: !!ctx.chat[0]?.is_user,
+                text: cut(ctx.chat[0]?.mes, 60),
             })),
             lastMessage: safe(() => {
-                const m = ctx.chat[ctx.chat.length - 1];
-                return { name: m.name, is_user: !!m.is_user, text: cut(m.mes, 60) };
+                const len = ctx.chat?.length ?? 0;
+                if (!len) return null;
+                const m = ctx.chat[len - 1];
+                return { name: m?.name, is_user: !!m?.is_user, text: cut(m?.mes, 60) };
             }),
             chatMetadata_KEYS: Object.keys(ctx.chatMetadata ?? {}),
         },
     };
 }
 
-// ---------- 输出：手机友好浮层 ----------
+// ---------- 输出：手机友好轻量浮层 ----------
 async function copyText(text, targetTextarea) {
-    // 1. 如果有传入的 textarea，直接使用它的选区进行复制（手机端最稳妥）
     if (targetTextarea) {
         try {
             targetTextarea.focus();
@@ -179,33 +181,17 @@ async function copyText(text, targetTextarea) {
             targetTextarea.setSelectionRange(0, 999999);
             const ok = document.execCommand('copy');
             if (ok) return true;
-        } catch { /* 继续 fallback */ }
+        } catch { /* fallback */ }
     }
 
-    // 2. 尝试 navigator.clipboard
     try {
         if (navigator.clipboard?.writeText) {
             await navigator.clipboard.writeText(text);
             return true;
         }
-    } catch { /* 继续 fallback */ }
+    } catch { /* fallback */ }
 
-    // 3. 兜底隐式 input
-    try {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'absolute';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        ta.setSelectionRange(0, 999999);
-        const ok = document.execCommand('copy');
-        ta.remove();
-        return ok;
-    } catch {
-        return false;
-    }
+    return false;
 }
 
 function showOverlay(json, data) {
@@ -213,16 +199,17 @@ function showOverlay(json, data) {
 
     const wrap = document.createElement('div');
     wrap.id = 'st-probe-overlay';
+    // 移除 backdrop-filter 滤镜，手机端非常吃 GPU
     wrap.style.cssText =
         'position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:2147483647;' +
-        'background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;' +
+        'background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;' +
         'font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",Roboto,sans-serif;';
 
     const box = document.createElement('div');
     box.style.cssText =
-        'background:#ffffff;color:#111827;border-radius:16px;width:100%;max-width:440px;' +
+        'background:#ffffff;color:#111827;border-radius:14px;width:100%;max-width:440px;' +
         'height:80vh;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;' +
-        'box-shadow:0 20px 48px rgba(0,0,0,0.3);box-sizing:border-box;border:1px solid rgba(0,0,0,0.1);';
+        'box-shadow:0 12px 36px rgba(0,0,0,0.4);box-sizing:border-box;border:1px solid rgba(0,0,0,0.1);';
 
     const ds = data.dataSource ?? {};
     const cdf = data.character_data_fields ?? {};
@@ -262,8 +249,8 @@ function showOverlay(json, data) {
             ${row('data 顶层 Keys', (cdf.ALL_DATA_KEYS ?? []).join(', '))}
             
             <div style="margin-top:10px;">
-                <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">JSON 原始文本 (如按钮复制失败可在此长按全选复制)：</div>
-                <textarea id="st-probe-raw-json" readonly style="width:100%;height:100px;font-size:10px;font-family:ui-monospace,monospace;border:1px solid #e5e7eb;border-radius:8px;padding:6px;box-sizing:border-box;background:#f9fafb;color:#111827;resize:none;">${json}</textarea>
+                <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">JSON 原始文本 (长按可直接全选复制)：</div>
+                <textarea id="st-probe-raw-json" readonly style="width:100%;height:90px;font-size:10px;font-family:ui-monospace,monospace;border:1px solid #e5e7eb;border-radius:8px;padding:6px;box-sizing:border-box;background:#f9fafb;color:#111827;resize:none;">${json}</textarea>
             </div>
         </div>
 
@@ -293,7 +280,6 @@ function showOverlay(json, data) {
         if (!el) return;
         el.addEventListener('click', close);
         el.addEventListener('touchend', close);
-        el.addEventListener('pointerdown', close);
     };
 
     bindCloseBtn(box.querySelector('#st-probe-top-close'));
@@ -301,9 +287,6 @@ function showOverlay(json, data) {
 
     // 点击黑色遮罩背景直接关闭
     wrap.addEventListener('click', (e) => {
-        if (e.target === wrap) close(e);
-    });
-    wrap.addEventListener('touchend', (e) => {
         if (e.target === wrap) close(e);
     });
 
@@ -322,6 +305,7 @@ function showOverlay(json, data) {
             if (rawTextarea) {
                 rawTextarea.focus();
                 rawTextarea.select();
+                rawTextarea.setSelectionRange(0, 999999);
             }
         }
     };
@@ -335,143 +319,52 @@ async function run() {
     try {
         if (!_getContext) _getContext = await resolveGetContext();
         if (!_getContext) {
-            alert('探针未能获取 SillyTavern 上下文，请确认扩展在启用状态');
+            alert('探针未能获取 SillyTavern 上下文');
             return;
         }
         const data = await collect();
         const json = JSON.stringify(data, null, 2);
-
-        console.log(LOG, '=== 当前 Character 完整快照 ===', data);
-        console.log(LOG, '=== 完整 JSON ===\n' + json);
-
         showOverlay(json, data);
     } catch (err) {
         console.error(LOG, '探针执行报错:', err);
-        alert('探针执行出错: ' + (err.message || err));
+        alert('探针出错: ' + (err.message || err));
     }
 }
 
-// ---------- 手机友好悬浮球 (可拖拽，绝对不会被遮挡) ----------
+// ---------- 纯点击极轻量悬浮球 (不挂全局mousemove，零性能开销) ----------
 function mountFloatingButton() {
     if (document.getElementById('st-probe-fab')) return;
-    const fab = document.createElement('div');
+    const fab = document.createElement('button');
     fab.id = 'st-probe-fab';
-    fab.innerHTML = '<span style="font-size:11px;font-weight:bold;letter-spacing:0.5px;">PROBE</span>';
+    fab.textContent = 'PROBE';
     fab.style.cssText =
-        'position:fixed;right:16px;bottom:100px;z-index:2147483640;width:52px;height:52px;' +
+        'position:fixed;right:14px;bottom:90px;z-index:2147483640;width:48px;height:48px;' +
         'border-radius:50%;background:#111827;color:#ffffff;display:flex;align-items:center;justify-content:center;' +
-        'cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,0.3);border:2px solid #ffffff;' +
-        'touch-action:none;user-select:none;font-family:ui-monospace,monospace;';
+        'cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.35);border:2px solid #ffffff;' +
+        'font-size:10px;font-weight:700;font-family:ui-monospace,monospace;padding:0;';
 
-    // 支持移动端拖拽
-    let isDragging = false;
-    let startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
-    let hasMoved = false;
-
-    const onTouchStart = (e) => {
-        isDragging = true;
-        hasMoved = false;
-        const touch = e.touches ? e.touches[0] : e;
-        startX = touch.clientX;
-        startY = touch.clientY;
-        const rect = fab.getBoundingClientRect();
-        initialLeft = rect.left;
-        initialTop = rect.top;
-    };
-
-    const onTouchMove = (e) => {
-        if (!isDragging) return;
-        const touch = e.touches ? e.touches[0] : e;
-        const dx = touch.clientX - startX;
-        const dy = touch.clientY - startY;
-        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-            hasMoved = true;
-            fab.style.left = `${Math.max(10, Math.min(window.innerWidth - 60, initialLeft + dx))}px`;
-            fab.style.top = `${Math.max(10, Math.min(window.innerHeight - 60, initialTop + dy))}px`;
-            fab.style.right = 'auto';
-            fab.style.bottom = 'auto';
-        }
-    };
-
-    const onTouchEnd = () => {
-        isDragging = false;
-        if (!hasMoved) {
-            run();
-        }
-    };
-
-    fab.addEventListener('touchstart', onTouchStart, { passive: false });
-    fab.addEventListener('touchmove', onTouchMove, { passive: false });
-    fab.addEventListener('touchend', onTouchEnd);
-    fab.addEventListener('mousedown', onTouchStart);
-    window.addEventListener('mousemove', onTouchMove);
-    window.addEventListener('mouseup', onTouchEnd);
+    fab.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        run();
+    });
+    fab.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        run();
+    });
 
     document.body.appendChild(fab);
 }
 
-// 扩展菜单列表项挂载
-const HOST_SELECTORS = ['#extensions_settings', '#extensionsMenu', '#extensions_menu'];
-
-function mountButton() {
-    if (document.getElementById('st-probe-btn')) return true;
-
-    let host = null;
-    for (const sel of HOST_SELECTORS) {
-        host = document.querySelector(sel);
-        if (host) break;
-    }
-    if (!host) return false;
-
-    const item = document.createElement('div');
-    item.id = 'st-probe-btn';
-    item.className = 'list-group-item flex-container flexGap5 interactable';
-    item.innerHTML = `
-        <div class="fa-solid fa-magnifying-glass extensionsMenuExtensionButton"></div>
-        <span>测试当前角色 (Probe)</span>`;
-    item.addEventListener('click', run);
-    host.appendChild(item);
-    return true;
-}
-
 async function boot() {
-    // 立即挂载悬浮球，确保在任何页面都能看到
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', mountFloatingButton);
-    } else {
-        mountFloatingButton();
-    }
-
+    mountFloatingButton();
     _getContext = await resolveGetContext();
-    
-    // 如果还没加载完毕，延迟 1 秒再尝试探测一次 getContext
     if (!_getContext) {
         setTimeout(async () => {
             _getContext = await resolveGetContext();
-        }, 1200);
+        }, 1500);
     }
-
-    // 监听扩展菜单出现
-    if (!mountButton()) {
-        const observer = new MutationObserver(() => {
-            if (mountButton()) observer.disconnect();
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-        setTimeout(() => observer.disconnect(), 60000);
-    }
-
-    // 注册斜杠命令 /probe
-    try {
-        if (_getContext?.SlashCommandParser && _getContext?.SlashCommand) {
-            _getContext.SlashCommandParser.addCommandObject(
-                _getContext.SlashCommand.fromProps({
-                    name: 'probe',
-                    helpString: '打印当前 Character 的全部字段（只读）',
-                    callback: () => { run(); return ''; },
-                }),
-            );
-        }
-    } catch { /* 忽略 */ }
 }
 
 boot();
