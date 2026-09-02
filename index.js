@@ -80,66 +80,47 @@ async function collect() {
             stVersion: safe(() => document.querySelector('#version_display')?.textContent?.trim(), 'n/a'),
         },
 
-        // 重点 1：characterId 到底是 ID 还是数组下标
-        context: {
-            characterId: idx,
+        // 重点 1：characterId 到底是什么值与类型，以及数据来源路径
+        dataSource: {
+            sourceExpression: "ctx.characters[ctx.characterId]",
+            characterId_rawValue: idx,
             characterId_type: typeof idx,
-            REMINDER: '官方定义：characterId = characters 数组下标，不是稳定 ID',
+            isIndexConfirmed: typeof idx === 'number',
+            description: "当前角色对象来自 ctx.characters[ctx.characterId]，characterId 实测为 characters 数组的当前索引位置",
             groupId: ctx.groupId ?? null,
             chatId: ctx.chatId ?? null,
             getCurrentChatId: safe(() => ctx.getCurrentChatId()),
-            name1: ctx.name1,
-            name2: ctx.name2,
+            name1: ctx.name1 ?? null,
+            name2: ctx.name2 ?? null,
         },
 
-        // 重点 2：角色对象顶层字段全集
-        character_topLevel: ch == null ? null : {
-            avatar: ch.avatar,
-            name: ch.name,
-            chat: ch.chat,
-            fav: ch.fav,
-            talkativeness: ch.talkativeness,
-            tags: ch.tags,
-            spec: ch.spec,
-            spec_version: ch.spec_version,
-            create_date: ch.create_date,
-            date_added: ch.date_added,
-            date_last_chat: ch.date_last_chat,
-            chat_size: ch.chat_size,
-            data_size: ch.data_size,
-            shallow: ch.shallow,
-            has_json_data: typeof ch.json_data === 'string' && ch.json_data.length > 0,
-            json_data_length: ch.json_data?.length ?? 0,
-            ALL_TOP_LEVEL_KEYS: Object.keys(ch),
-        },
+        // 重点 2：角色对象顶层字段全集（包含 raw 原样对象）
+        character_raw_topLevel: ch ?? null,
 
-        // 重点 3：卡数据本体
-        character_data: ch == null ? null : {
-            name: d.name,
-            description_len: d.description?.length ?? 0,
-            description_preview: cut(d.description, 80),
-            personality_len: d.personality?.length ?? 0,
-            personality_preview: cut(d.personality, 80),
-            scenario_len: d.scenario?.length ?? 0,
-            first_mes_len: d.first_mes?.length ?? 0,
-            mes_example_len: d.mes_example?.length ?? 0,
-            creator: d.creator,
-            character_version: d.character_version,
-            creator_notes: cut(d.creator_notes, 60),
-            system_prompt_len: d.system_prompt?.length ?? 0,
-            post_history_instructions_len: d.post_history_instructions?.length ?? 0,
-            tags: d.tags,
-            alternate_greetings_count: Array.isArray(d.alternate_greetings) ? d.alternate_greetings.length : 0,
-            group_only_greetings_count: Array.isArray(d.group_only_greetings) ? d.group_only_greetings.length : 0,
-            nickname: d.nickname ?? null,
+        // 重点 3：卡数据本体（包含 raw 原样 data 属性与结构化字段）
+        character_data_raw: d ?? null,
+        
+        // 重点 3.1：卡数据核心字段明确展示（不存在则显示 null / undefined）
+        character_data_fields: ch == null ? null : {
+            name: d.name ?? null,
+            description: d.description ?? null,
+            personality: d.personality ?? null,
+            scenario: d.scenario ?? null,
+            first_mes: d.first_mes ?? null,
+            mes_example: d.mes_example ?? null,
+            alternate_greetings: d.alternate_greetings ?? null,
+            character_book: d.character_book ?? null,
+            tags: d.tags ?? null,
+            creator: d.creator ?? null,
+            character_version: d.character_version ?? null,
             source: d.source ?? null,
             creation_date: d.creation_date ?? null,
             modification_date: d.modification_date ?? null,
-            assets_count: Array.isArray(d.assets) ? d.assets.length : 0,
-            character_book_entries: d.character_book?.entries?.length ?? 0,
-            // 重点 4：extensions 里现在有什么
             extensions: d.extensions ?? null,
-            extensions_KEYS: Object.keys(d.extensions ?? {}),
+            system_prompt: d.system_prompt ?? null,
+            post_history_instructions: d.post_history_instructions ?? null,
+            creator_notes: d.creator_notes ?? null,
+            nickname: d.nickname ?? null,
             ALL_DATA_KEYS: Object.keys(d),
         },
 
@@ -226,35 +207,39 @@ function showOverlay(json, data) {
         'max-height:92vh;display:flex;flex-direction:column;overflow:hidden;' +
         'box-shadow:0 14px 44px rgba(0,0,0,.4);box-sizing:border-box;';
 
-    const tl = data.character_topLevel ?? {};
-    const idn = data.identity ?? {};
-    const cd = data.character_data ?? {};
+    const ds = data.dataSource ?? {};
+    const cdf = data.character_data_fields ?? {};
 
     const row = (k, v, warn) =>
         `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f1f1f1;">
-           <span style="flex:0 0 110px;color:#888;font-size:12px;line-height:1.4;">${k}</span>
+           <span style="flex:0 0 130px;color:#888;font-size:12px;line-height:1.4;">${k}</span>
            <span style="flex:1;word-break:break-all;font-size:13px;line-height:1.45;${warn ? 'color:#c5221f;font-weight:700;' : 'color:#222;'}">${v}</span>
          </div>`;
 
     box.innerHTML = `
         <div style="padding:16px 18px;border-bottom:1px solid #ececec;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
-                <span style="font-size:17px;font-weight:700;">${idn.name ?? '(无角色)'}</span>
+                <span style="font-size:17px;font-weight:700;">${cdf.name ?? '(无角色)'}</span>
                 <span style="font-size:11px;color:#fff;background:#7c5cff;padding:2px 9px;border-radius:11px;">${data.meta.mode}</span>
             </div>
             <div style="font-size:11px;color:#999;">SillyTavern 当前角色探针 · 只读</div>
         </div>
 
         <div style="padding:10px 18px;background:#fafafa;overflow:auto;flex:1;">
-            ${row('characterId', `${data.context.characterId} <span style="color:#999">(${data.context.characterId_type})</span>`, true)}
-            ${row('⚠ 这是数组下标', '不是稳定 ID，不能用作角色唯一标识', true)}
-            ${row('name', idn.name ?? '-')}
+            ${row('数据来源表达式', ds.sourceExpression ?? 'ctx.characters[ctx.characterId]', true)}
+            ${row('characterId 实测值', `${ds.characterId_rawValue} <span style="color:#999">(类型: ${ds.characterId_type})</span>`, true)}
+            ${row('是否为数组索引', ds.isIndexConfirmed ? '是（数字索引）' : '否', true)}
+            ${row('name', cdf.name ?? '-')}
             ${row('avatar 文件名', idn.avatar_file ?? '-')}
-            ${row('spec / version', `${tl.spec ?? '-'} / ${tl.spec_version ?? '-'}`)}
-            ${row('shallow 惰性', String(tl.shallow ?? false), !!tl.shallow)}
-            ${row('chat 会话名', data.context.chatId ?? '-')}
-            ${row('extensions keys', (cd.extensions_KEYS ?? []).join(', ') || '（空）')}
-            ${row('内容指纹', String(idn.content_fingerprint_sha256 ?? '').slice(0, 42) + '…')}
+            ${row('description 长度', cdf.description ? `${cdf.description.length} 字` : 'null')}
+            ${row('personality 长度', cdf.personality ? `${cdf.personality.length} 字` : 'null')}
+            ${row('scenario 长度', cdf.scenario ? `${cdf.scenario.length} 字` : 'null')}
+            ${row('first_mes 长度', cdf.first_mes ? `${cdf.first_mes.length} 字` : 'null')}
+            ${row('mes_example 长度', cdf.mes_example ? `${cdf.mes_example.length} 字` : 'null')}
+            ${row('chat 会话名', ds.chatId ?? '-')}
+            ${row('extensions 键列表', (Object.keys(cdf.extensions ?? {})).join(', ') || 'null / 空')}
+            ${row('data 顶层 Keys', (cdf.ALL_DATA_KEYS ?? []).join(', '))}
+            ${row('内容指纹 (SHA256)', String(idn.content_fingerprint_sha256 ?? '').slice(0, 32) + '…')}
         </div>
 
         <div style="padding:10px 14px;display:flex;gap:10px;border-top:1px solid #ececec;">
