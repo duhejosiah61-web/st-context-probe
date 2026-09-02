@@ -331,40 +331,78 @@ async function run() {
     }
 }
 
-// ---------- 纯点击极轻量悬浮球 (不挂全局mousemove，零性能开销) ----------
-function mountFloatingButton() {
-    if (document.getElementById('st-probe-fab')) return;
-    const fab = document.createElement('button');
-    fab.id = 'st-probe-fab';
-    fab.textContent = 'PROBE';
-    fab.style.cssText =
-        'position:fixed;right:14px;bottom:90px;z-index:2147483640;width:48px;height:48px;' +
-        'border-radius:50%;background:#111827;color:#ffffff;display:flex;align-items:center;justify-content:center;' +
-        'cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.35);border:2px solid #ffffff;' +
-        'font-size:10px;font-weight:700;font-family:ui-monospace,monospace;padding:0;';
+// ---------- 魔法棒 (Extensions Menu / Quick Menu) 挂载 ----------
+function tryMountMenuButton() {
+    if (document.getElementById('st-probe-menu-item')) return true;
 
-    fab.addEventListener('click', (e) => {
+    // 魔法棒弹出的扩展列表容器
+    const menuContainer = document.querySelector('#extensionsMenu') || 
+                          document.querySelector('#extensions_menu') ||
+                          document.querySelector('#extensions_settings');
+
+    if (!menuContainer) return false;
+
+    const item = document.createElement('div');
+    item.id = 'st-probe-menu-item';
+    item.className = 'list-group-item flex-container flexGap5 interactable';
+    item.style.cursor = 'pointer';
+    item.innerHTML = `
+        <div class="fa-solid fa-magnifying-glass extensionsMenuExtensionButton" style="margin-right: 6px;"></div>
+        <span style="font-weight: 600;">测试当前角色 (Probe)</span>
+    `;
+
+    item.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         run();
     });
-    fab.addEventListener('touchend', (e) => {
+
+    item.addEventListener('touchend', (e) => {
         e.preventDefault();
         e.stopPropagation();
         run();
     });
 
-    document.body.appendChild(fab);
+    menuContainer.appendChild(item);
+    return true;
 }
 
 async function boot() {
-    mountFloatingButton();
     _getContext = await resolveGetContext();
-    if (!_getContext) {
-        setTimeout(async () => {
-            _getContext = await resolveGetContext();
-        }, 1500);
-    }
+    
+    // 1. 尝试直接挂载
+    tryMountMenuButton();
+
+    // 2. 监听魔法棒图标点击事件（当用户点击魔法棒打开菜单时，动态注入进去）
+    const wandSelectors = ['#extensions_button', '#extensionsMenuButton', '.fa-wand-magic-sparkles', '.fa-wand-magic'];
+    const bindWandClick = () => {
+        wandSelectors.forEach(sel => {
+            const btn = document.querySelector(sel);
+            if (btn && !btn._hasProbeBound) {
+                btn._hasProbeBound = true;
+                btn.addEventListener('click', () => setTimeout(tryMountMenuButton, 100));
+                btn.addEventListener('touchend', () => setTimeout(tryMountMenuButton, 100));
+            }
+        });
+    };
+
+    bindWandClick();
+    setInterval(bindWandClick, 2000);
+
+    // 3. 注册 /probe 斜杠命令
+    try {
+        if (_getContext?.SlashCommandParser && _getContext?.SlashCommand) {
+            _getContext.SlashCommandParser.addCommandObject(
+                _getContext.SlashCommand.fromProps({
+                    name: 'probe',
+                    helpString: '只读探针：获取当前角色全部真实数据',
+                    callback: () => { run(); return ''; },
+                })
+            );
+        }
+    } catch { /* 忽略 */ }
+
+    console.log(LOG, '探针已就绪：点击魔法棒 →「测试当前角色 (Probe)」，或在输入框发送 /probe');
 }
 
 boot();
