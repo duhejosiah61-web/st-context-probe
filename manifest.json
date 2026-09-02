@@ -1,0 +1,8 @@
+{
+  "display_name": "当前角色探针 (Probe)",
+  "loading_order": 100,
+  "js": "index.js",
+  "author": "wonderdraft",
+  "version": "1.0.0",
+  "description": "只读探针：打印当前 Character 的全部可获取字段。不写卡、不保存、不联网。"
+}
