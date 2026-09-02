@@ -1,54 +1,302 @@
-/* Wonderdraft Link Extension Styles */
+/* 草稿笨笨 ↔ SillyTavern 全功能联动悬浮球与大版面样式 */
+
+/* 1. 右下角常驻悬浮联动球 */
 #wd-float-ball {
     position: fixed !important;
-    bottom: 24px !important;
-    right: 20px !important;
-    width: 46px !important;
-    height: 46px !important;
-    border-radius: 23px !important;
-    background: #111827 !important;
+    bottom: 28px !important;
+    right: 28px !important;
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 26px !important;
+    background: linear-gradient(135deg, #1e1e2e, #0f172a) !important;
     color: #ffffff !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32) !important;
+    box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.4), 0 4px 10px -2px rgba(99, 102, 241, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
     z-index: 2147483647 !important;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
-    opacity: 0.95;
-    user-select: none;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    user-select: none !important;
 }
+
+#wd-float-ball:hover {
+    transform: scale(1.08) translateY(-2px) !important;
+    box-shadow: 0 14px 30px -3px rgba(0, 0, 0, 0.5), 0 6px 16px -2px rgba(99, 102, 241, 0.5) !important;
+}
+
 #wd-float-ball:active {
-    transform: scale(0.92);
-    opacity: 1;
+    transform: scale(0.94) !important;
 }
-#wd-link-drawer {
+
+#wd-float-badge {
+    position: absolute !important;
+    top: 3px !important;
+    right: 3px !important;
+    width: 10px !important;
+    height: 10px !important;
+    border-radius: 5px !important;
+    background: #10b981 !important;
+    border: 2px solid #0f172a !important;
+}
+
+/* 2. 居中全屏联动控制中心大版面遮罩 */
+#wd-modal-overlay {
     position: fixed !important;
-    bottom: 80px !important;
-    right: 16px !important;
-    width: 320px !important;
-    max-width: calc(100vw - 32px) !important;
-    background: rgba(255, 255, 255, 0.98) !important;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 0, 0, 0.12) !important;
-    border-radius: 20px !important;
-    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.25) !important;
-    padding: 18px !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(15, 23, 42, 0.72) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
     z-index: 2147483647 !important;
-    display: none;
-    flex-direction: column;
-    gap: 12px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: #111827 !important;
-    box-sizing: border-box;
-}
-#wd-link-drawer.show {
     display: flex !important;
-    animation: wd-drawer-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    align-items: center !important;
+    justify-content: center !important;
+    animation: wd-fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
-@keyframes wd-drawer-pop {
-    from { opacity: 0; transform: translateY(16px) scale(0.96); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+
+/* 控制中心面板主体卡片 */
+#wd-modal-panel {
+    width: 580px !important;
+    max-width: calc(100vw - 36px) !important;
+    background: #ffffff !important;
+    border-radius: 24px !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    padding: 24px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif !important;
+    color: #0f172a !important;
+    box-sizing: border-box !important;
+    animation: wd-panel-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
+
+/* 头部 */
+.wd-modal-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding-bottom: 14px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.wd-modal-logo {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 12px !important;
+    background: #eef2ff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.wd-modal-title {
+    margin: 0 !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    line-height: 1.2 !important;
+}
+
+.wd-modal-subtitle {
+    margin: 3px 0 0 0 !important;
+    font-size: 11px !important;
+    color: #64748b !important;
+}
+
+.wd-modal-close {
+    background: #f1f5f9 !important;
+    border: none !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 16px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    color: #64748b !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.15s !important;
+}
+
+.wd-modal-close:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* 角色卡信息区 */
+.wd-char-status-card {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 16px !important;
+    padding: 12px 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.wd-status-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    font-size: 13px !important;
+}
+
+.wd-text-muted {
+    color: #64748b !important;
+    font-size: 12px !important;
+}
+
+.wd-text-bold {
+    font-weight: 700 !important;
+    color: #0f172a !important;
+}
+
+.wd-text-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    font-size: 11px !important;
+    background: #e2e8f0 !important;
+    padding: 2px 8px !important;
+    border-radius: 6px !important;
+    color: #334155 !important;
+}
+
+/* 2x2 功能网格 */
+.wd-grid-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+}
+
+.wd-action-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 16px !important;
+    padding: 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    transition: all 0.2s !important;
+}
+
+.wd-action-card:hover {
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+}
+
+.wd-card-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 6px !important;
+}
+
+.wd-card-title {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+}
+
+.wd-card-tag {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+}
+
+.wd-tag-blue { background: #e0e7ff !important; color: #4338ca !important; }
+.wd-tag-green { background: #d1fae5 !important; color: #047857 !important; }
+.wd-tag-amber { background: #fef3c7 !important; color: #b45309 !important; }
+.wd-tag-muted { background: #f1f5f9 !important; color: #64748b !important; }
+
+.wd-card-desc {
+    margin: 0 0 12px 0 !important;
+    font-size: 11px !important;
+    color: #64748b !important;
+    line-height: 1.4 !important;
+    min-height: 32px !important;
+}
+
+.wd-card-btn {
+    width: 100% !important;
+    padding: 8px 12px !important;
+    border-radius: 10px !important;
+    border: 1px solid #e2e8f0 !important;
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.15s !important;
+}
+
+.wd-card-btn:hover {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+
+.wd-card-btn:active {
+    transform: scale(0.98) !important;
+}
+
+.wd-btn-primary {
+    background: #6366f1 !important;
+    color: #ffffff !important;
+    border-color: #6366f1 !important;
+}
+
+.wd-btn-primary:hover {
+    background: #4f46e5 !important;
+    border-color: #4f46e5 !important;
+}
+
+.wd-btn-amber {
+    background: #f59e0b !important;
+    color: #ffffff !important;
+    border-color: #f59e0b !important;
+}
+
+.wd-btn-amber:hover {
+    background: #d97706 !important;
+    border-color: #d97706 !important;
+}
+
+/* 底部状态栏 */
+.wd-modal-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding-top: 10px !important;
+    border-top: 1px solid #f1f5f9 !important;
+    font-size: 11px !important;
+    color: #94a3b8 !important;
+}
+
+.wd-footer-status {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.wd-dot {
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 3px !important;
+    background: #10b981 !important;
+}
+
+@keyframes wd-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes wd-panel-pop {
+    from { opacity: 0; transform: scale(0.94) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 
