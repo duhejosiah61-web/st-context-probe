@@ -216,49 +216,52 @@ function showOverlay(json, data) {
     const wrap = document.createElement('div');
     wrap.id = 'st-probe-overlay';
     wrap.style.cssText =
-        'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.62);display:flex;' +
-        'align-items:center;justify-content:center;padding:24px;';
+        'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;' +
+        'align-items:center;justify-content:center;padding:14px;box-sizing:border-box;' +
+        'font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
 
     const box = document.createElement('div');
     box.style.cssText =
-        'background:#fff;color:#1c1c1c;border-radius:12px;max-width:920px;width:100%;' +
-        'max-height:86vh;display:flex;flex-direction:column;overflow:hidden;' +
-        'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
-        'box-shadow:0 12px 40px rgba(0,0,0,.35);';
+        'background:#fff;color:#1c1c1c;border-radius:14px;width:100%;max-width:560px;' +
+        'max-height:92vh;display:flex;flex-direction:column;overflow:hidden;' +
+        'box-shadow:0 14px 44px rgba(0,0,0,.4);box-sizing:border-box;';
 
     const tl = data.character_topLevel ?? {};
     const idn = data.identity ?? {};
+    const cd = data.character_data ?? {};
+
     const row = (k, v, warn) =>
-        `<div style="display:flex;gap:8px;padding:2px 0;">
-           <span style="flex:0 0 150px;color:#6b6b6b;">${k}</span>
-           <span style="flex:1;word-break:break-all;${warn ? 'color:#b3261e;font-weight:600;' : ''}">${v}</span>
+        `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f1f1f1;">
+           <span style="flex:0 0 110px;color:#888;font-size:12px;line-height:1.4;">${k}</span>
+           <span style="flex:1;word-break:break-all;font-size:13px;line-height:1.45;${warn ? 'color:#c5221f;font-weight:700;' : 'color:#222;'}">${v}</span>
          </div>`;
 
     box.innerHTML = `
-        <div style="padding:14px 18px;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;gap:10px;">
-            <strong style="font-size:15px;flex:1;">当前角色探针 · ${data.meta.mode}</strong>
-            <button id="st-probe-copy" style="padding:6px 12px;border:1px solid #ccc;background:#fafafa;border-radius:6px;cursor:pointer;font-family:inherit;">复制 JSON</button>
-            <button id="st-probe-close" style="padding:6px 12px;border:1px solid #ccc;background:#fafafa;border-radius:6px;cursor:pointer;font-family:inherit;">关闭</button>
+        <div style="padding:16px 18px;border-bottom:1px solid #ececec;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+                <span style="font-size:17px;font-weight:700;">${idn.name ?? '(无角色)'}</span>
+                <span style="font-size:11px;color:#fff;background:#7c5cff;padding:2px 9px;border-radius:11px;">${data.meta.mode}</span>
+            </div>
+            <div style="font-size:11px;color:#999;">SillyTavern 当前角色探针 · 只读</div>
         </div>
-        <div style="padding:12px 18px;background:#fafafa;border-bottom:1px solid #e5e5e5;font-size:12px;">
-            ${row('characterId', `${data.context.characterId} （${data.context.characterId_type}）`, true)}
-            ${row('REMINDER', '这是 characters 数组下标，不是稳定 ID', true)}
+
+        <div style="padding:10px 18px;background:#fafafa;overflow:auto;flex:1;">
+            ${row('characterId', `${data.context.characterId} <span style="color:#999">(${data.context.characterId_type})</span>`, true)}
+            ${row('⚠ 这是数组下标', '不是稳定 ID，不能用作角色唯一标识', true)}
             ${row('name', idn.name ?? '-')}
-            ${row('avatar（文件名）', idn.avatar_file ?? '-')}
+            ${row('avatar 文件名', idn.avatar_file ?? '-')}
             ${row('spec / version', `${tl.spec ?? '-'} / ${tl.spec_version ?? '-'}`)}
-            ${row('shallow（惰性加载）', String(tl.shallow ?? false), !!tl.shallow)}
-            ${row('chat（会话名）', data.context.chatId ?? '-')}
-            ${row('extensions keys', (data.character_data?.extensions_KEYS ?? []).join(', ') || '（空）')}
-            ${row('内容指纹', String(idn.content_fingerprint_sha256 ?? '').slice(0, 32) + '…')}
+            ${row('shallow 惰性', String(tl.shallow ?? false), !!tl.shallow)}
+            ${row('chat 会话名', data.context.chatId ?? '-')}
+            ${row('extensions keys', (cd.extensions_KEYS ?? []).join(', ') || '（空）')}
+            ${row('内容指纹', String(idn.content_fingerprint_sha256 ?? '').slice(0, 42) + '…')}
+        </div>
+
+        <div style="padding:10px 14px;display:flex;gap:10px;border-top:1px solid #ececec;">
+            <button id="st-probe-copy" style="flex:1;padding:12px 0;border:none;border-radius:10px;background:#7c5cff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">复制完整 JSON</button>
+            <button id="st-probe-close" style="flex:1;padding:12px 0;border:1px solid #ddd;background:#fff;color:#444;border-radius:10px;font-size:14px;cursor:pointer;">关闭</button>
         </div>
     `;
-
-    const pre = document.createElement('pre');
-    pre.style.cssText =
-        'margin:0;padding:14px 18px;overflow:auto;flex:1;font-size:12px;line-height:1.55;' +
-        'white-space:pre-wrap;word-break:break-word;';
-    pre.textContent = json;
-    box.appendChild(pre);
 
     wrap.appendChild(box);
     document.body.appendChild(wrap);
@@ -273,8 +276,9 @@ function showOverlay(json, data) {
     box.querySelector('#st-probe-close').addEventListener('click', close);
     box.querySelector('#st-probe-copy').addEventListener('click', async (e) => {
         const ok = await copyText(json);
-        e.target.textContent = ok ? '已复制 ✓' : '复制失败';
-        setTimeout(() => (e.target.textContent = '复制 JSON'), 1500);
+        e.target.textContent = ok ? '已复制 ✓' : '复制失败，看 Console';
+        if (ok) setTimeout(close, 700);
+        else setTimeout(() => (e.target.textContent = '复制完整 JSON'), 1800);
     });
     wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
 }
@@ -286,11 +290,12 @@ async function run() {
 
     console.log(LOG, '=== 当前 Character 完整快照 ===');
     console.log(LOG, data);
-    console.log(LOG, '=== 完整 JSON（可右键 → Copy object）===');
+    console.log(LOG, '=== 完整 JSON ===');
     console.log(json);
 
+    // 弹浮窗展示（手机友好），浮窗内提供「复制完整 JSON」按钮
     showOverlay(json, data);
-    try { toastr?.success?.('已输出到 Console 与浮层'); } catch { /* toastr 不可用时静默 */ }
+    try { toastr?.info?.('当前角色探针已显示，点「复制完整 JSON」后粘贴发我', '', { timeOut: 6000 }); } catch { /* 静默 */ }
 }
 
 // ---------- 挂载 ----------
@@ -318,8 +323,24 @@ function mountButton() {
     return true;
 }
 
+// 浮动按钮：确保任何页面都可见可点（玩家一般不用斜杠命令，也不一定会去扩展面板找）
+function mountFloatingButton() {
+    if (document.getElementById('st-probe-fab')) return;
+    const fab = document.createElement('button');
+    fab.id = 'st-probe-fab';
+    fab.textContent = '🔍 测试当前角色';
+    fab.style.cssText =
+        'position:fixed;left:14px;bottom:64px;z-index:99998;border:none;' +
+        'background:#7c5cff;color:#fff;padding:12px 16px;border-radius:24px;' +
+        'font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.32);' +
+        'font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
+    fab.addEventListener('click', run);
+    document.body.appendChild(fab);
+}
+
 async function boot() {
     _getContext = await resolveGetContext();
+    mountFloatingButton();
     if (!_getContext) {
         console.error(LOG, '无法解析 getContext()，探针未启动。请确认本扩展安装在 SillyTavern 的 extensions 目录下。');
         return;
