@@ -170,20 +170,36 @@ async function collect() {
 }
 
 // ---------- 输出：手机友好浮层 ----------
-async function copyText(text) {
+async function copyText(text, targetTextarea) {
+    // 1. 如果有传入的 textarea，直接使用它的选区进行复制（手机端最稳妥）
+    if (targetTextarea) {
+        try {
+            targetTextarea.focus();
+            targetTextarea.select();
+            targetTextarea.setSelectionRange(0, 999999);
+            const ok = document.execCommand('copy');
+            if (ok) return true;
+        } catch { /* 继续 fallback */ }
+    }
+
+    // 2. 尝试 navigator.clipboard
     try {
         if (navigator.clipboard?.writeText) {
             await navigator.clipboard.writeText(text);
             return true;
         }
-    } catch { /* 落到兜底 */ }
+    } catch { /* 继续 fallback */ }
+
+    // 3. 兜底隐式 input
     try {
         const ta = document.createElement('textarea');
         ta.value = text;
-        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
         document.body.appendChild(ta);
         ta.focus();
         ta.select();
+        ta.setSelectionRange(0, 999999);
         const ok = document.execCommand('copy');
         ta.remove();
         return ok;
@@ -198,40 +214,39 @@ function showOverlay(json, data) {
     const wrap = document.createElement('div');
     wrap.id = 'st-probe-overlay';
     wrap.style.cssText =
-        'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,0.65);display:flex;' +
-        'align-items:center;justify-content:center;padding:12px;box-sizing:border-box;' +
-        'backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);' +
+        'position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:2147483647;' +
+        'background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;' +
         'font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",Roboto,sans-serif;';
 
     const box = document.createElement('div');
     box.style.cssText =
-        'background:#ffffff;color:#111827;border-radius:16px;width:100%;max-width:480px;' +
-        'max-height:86vh;display:flex;flex-direction:column;overflow:hidden;' +
-        'box-shadow:0 20px 48px rgba(0,0,0,0.3);box-sizing:border-box;border:1px solid rgba(0,0,0,0.08);';
+        'background:#ffffff;color:#111827;border-radius:16px;width:100%;max-width:440px;' +
+        'height:80vh;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;' +
+        'box-shadow:0 20px 48px rgba(0,0,0,0.3);box-sizing:border-box;border:1px solid rgba(0,0,0,0.1);';
 
     const ds = data.dataSource ?? {};
     const cdf = data.character_data_fields ?? {};
     const idn = data.identity ?? {};
 
     const row = (k, v, warn) =>
-        `<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
-           <span style="flex:0 0 110px;color:#6b7280;font-size:12px;line-height:1.4;">${k}</span>
-           <span style="flex:1;word-break:break-all;font-size:12px;line-height:1.45;${warn ? 'color:#dc2626;font-weight:600;' : 'color:#1f2937;'}">${v}</span>
+        `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #f3f4f6;">
+           <span style="flex:0 0 100px;color:#6b7280;font-size:11px;line-height:1.4;">${k}</span>
+           <span style="flex:1;word-break:break-all;font-size:11px;line-height:1.45;${warn ? 'color:#dc2626;font-weight:600;' : 'color:#1f2937;'}">${v}</span>
          </div>`;
 
     box.innerHTML = `
-        <div style="padding:14px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;background:#fafafa;">
+        <div style="padding:12px 14px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;background:#fafafa;flex-shrink:0;">
             <div>
                 <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:16px;font-weight:700;color:#111827;">${cdf.name ?? '(未检测到角色)'}</span>
-                    <span style="font-size:10px;color:#2563eb;background:#eff6ff;padding:2px 6px;border-radius:4px;font-weight:500;">${data.meta.mode}</span>
+                    <span style="font-size:15px;font-weight:700;color:#111827;">${cdf.name ?? '(未检测到角色)'}</span>
+                    <span style="font-size:10px;color:#2563eb;background:#eff6ff;padding:1px 5px;border-radius:4px;font-weight:500;">${data.meta.mode}</span>
                 </div>
-                <div style="font-size:11px;color:#9ca3af;margin-top:2px;">SillyTavern 角色数据探针 · 只读</div>
+                <div style="font-size:10px;color:#9ca3af;margin-top:2px;">SillyTavern 角色数据探针 · 只读</div>
             </div>
-            <button id="st-probe-top-close" style="background:none;border:none;font-size:20px;color:#9ca3af;cursor:pointer;padding:4px;line-height:1;">✕</button>
+            <button id="st-probe-top-close" style="background:none;border:none;font-size:18px;color:#9ca3af;cursor:pointer;padding:4px;line-height:1;">✕</button>
         </div>
 
-        <div style="padding:12px 16px;background:#ffffff;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;">
+        <div style="padding:10px 14px;background:#ffffff;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;">
             ${row('数据来源', ds.sourceExpression ?? 'ctx.characters[ctx.characterId]', true)}
             ${row('characterId', `${ds.characterId_rawValue} <span style="color:#9ca3af">(${ds.characterId_type})</span>`, true)}
             ${row('类型判断', ds.isIndexConfirmed ? '数组索引 (数字)' : '非纯数字', true)}
@@ -245,17 +260,23 @@ function showOverlay(json, data) {
             ${row('当前会话 chatId', ds.chatId ?? 'null')}
             ${row('扩展键 extensions', Object.keys(cdf.extensions ?? {}).join(', ') || 'null / 空')}
             ${row('data 顶层 Keys', (cdf.ALL_DATA_KEYS ?? []).join(', '))}
-            ${row('指纹 (SHA256)', String(idn.content_fingerprint_sha256 ?? '').slice(0, 24) + '…')}
+            
+            <div style="margin-top:10px;">
+                <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">JSON 原始文本 (如按钮复制失败可在此长按全选复制)：</div>
+                <textarea id="st-probe-raw-json" readonly style="width:100%;height:100px;font-size:10px;font-family:ui-monospace,monospace;border:1px solid #e5e7eb;border-radius:8px;padding:6px;box-sizing:border-box;background:#f9fafb;color:#111827;resize:none;">${json}</textarea>
+            </div>
         </div>
 
-        <div style="padding:12px 14px;display:flex;gap:10px;border-top:1px solid #f3f4f6;background:#fafafa;">
-            <button id="st-probe-copy" style="flex:1;padding:12px 0;border:none;border-radius:10px;background:#111827;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">复制完整 JSON</button>
-            <button id="st-probe-close" style="flex:1;padding:12px 0;border:1px solid #e5e7eb;background:#ffffff;color:#374151;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;">关闭</button>
+        <div style="padding:10px 12px;display:flex;gap:8px;border-top:1px solid #f3f4f6;background:#fafafa;flex-shrink:0;">
+            <button id="st-probe-copy" style="flex:1;padding:10px 0;border:none;border-radius:8px;background:#111827;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">一键复制全部 JSON</button>
+            <button id="st-probe-close" style="flex:1;padding:10px 0;border:1px solid #e5e7eb;background:#ffffff;color:#374151;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;">关闭</button>
         </div>
     `;
 
     wrap.appendChild(box);
     document.body.appendChild(wrap);
+
+    const rawTextarea = box.querySelector('#st-probe-raw-json');
 
     const close = () => {
         wrap.remove();
@@ -266,13 +287,18 @@ function showOverlay(json, data) {
 
     box.querySelector('#st-probe-top-close').addEventListener('click', close);
     box.querySelector('#st-probe-close').addEventListener('click', close);
+    
     box.querySelector('#st-probe-copy').addEventListener('click', async (e) => {
-        const ok = await copyText(json);
-        e.target.textContent = ok ? '已复制 ✓' : '复制失败 (看 Console)';
+        const ok = await copyText(json, rawTextarea);
         if (ok) {
-            setTimeout(close, 800);
+            e.target.textContent = '已复制到剪切板 ✓';
+            setTimeout(close, 1000);
         } else {
-            setTimeout(() => (e.target.textContent = '复制完整 JSON'), 1800);
+            e.target.textContent = '已选中上方文本框，请长按拷贝';
+            if (rawTextarea) {
+                rawTextarea.focus();
+                rawTextarea.select();
+            }
         }
     });
     wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
