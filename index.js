@@ -278,30 +278,56 @@ function showOverlay(json, data) {
 
     const rawTextarea = box.querySelector('#st-probe-raw-json');
 
-    const close = () => {
+    const close = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         wrap.remove();
         document.removeEventListener('keydown', onKey);
     };
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', onKey);
 
-    box.querySelector('#st-probe-top-close').addEventListener('click', close);
-    box.querySelector('#st-probe-close').addEventListener('click', close);
-    
-    box.querySelector('#st-probe-copy').addEventListener('click', async (e) => {
+    const bindCloseBtn = (el) => {
+        if (!el) return;
+        el.addEventListener('click', close);
+        el.addEventListener('touchend', close);
+        el.addEventListener('pointerdown', close);
+    };
+
+    bindCloseBtn(box.querySelector('#st-probe-top-close'));
+    bindCloseBtn(box.querySelector('#st-probe-close'));
+
+    // 点击黑色遮罩背景直接关闭
+    wrap.addEventListener('click', (e) => {
+        if (e.target === wrap) close(e);
+    });
+    wrap.addEventListener('touchend', (e) => {
+        if (e.target === wrap) close(e);
+    });
+
+    const copyBtn = box.querySelector('#st-probe-copy');
+    const handleCopy = async (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         const ok = await copyText(json, rawTextarea);
         if (ok) {
-            e.target.textContent = '已复制到剪切板 ✓';
-            setTimeout(close, 1000);
+            copyBtn.textContent = '已复制到剪切板 ✓';
+            setTimeout(close, 800);
         } else {
-            e.target.textContent = '已选中上方文本框，请长按拷贝';
+            copyBtn.textContent = '已全选，请长按文本框复制';
             if (rawTextarea) {
                 rawTextarea.focus();
                 rawTextarea.select();
             }
         }
-    });
-    wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
+    };
+
+    copyBtn.addEventListener('click', handleCopy);
+    copyBtn.addEventListener('touchend', handleCopy);
 }
 
 // ---------- 主流程 ----------
